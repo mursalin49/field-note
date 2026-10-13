@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/di.dart';
 import '../../domain/entities.dart';
@@ -161,43 +164,7 @@ class NoteDetailPage extends StatelessWidget {
                         ),
                         if (n.hasLocation) ...[
                           const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: SizedBox(
-                              height: 104,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                        painter: _MapPreviewPainter()),
-                                  ),
-                                  const Icon(Icons.location_on,
-                                      color: Color(0xFFFF5A1F), size: 32),
-                                  Positioned(
-                                    left: 10,
-                                    bottom: 8,
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
-                                        child: Text(
-                                          '${n.latitude!.toStringAsFixed(3)}, ${n.longitude!.toStringAsFixed(3)}',
-                                          style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          _locationMap(context, n),
                         ],
                         const SizedBox(height: 18),
                         const Text('Description',
@@ -229,6 +196,81 @@ class NoteDetailPage extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _locationMap(BuildContext context, FieldNote note) {
+    final point = LatLng(note.latitude!, note.longitude!);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: 190,
+        child: Stack(
+          children: [
+            FlutterMap(
+              options: MapOptions(
+                initialCenter: point,
+                initialZoom: 15,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.field_notes',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: point,
+                      width: 44,
+                      height: 52,
+                      child: const Icon(Icons.location_pin,
+                          color: Color(0xFFFF5A1F), size: 44),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Positioned(
+              left: 8,
+              bottom: 8,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  child: Text('© OpenStreetMap contributors',
+                      style: TextStyle(fontSize: 9)),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: FilledButton.tonalIcon(
+                onPressed: () async {
+                  final url = Uri.https('www.google.com', '/maps/search/', {
+                    'api': '1',
+                    'query': '${point.latitude},${point.longitude}',
+                  });
+                  if (!await launchUrl(url,
+                      mode: LaunchMode.externalApplication)) {
+                    if (context.mounted) {
+                      showSnack(context, 'Could not open Google Maps.');
+                    }
+                  }
+                },
+                icon: const Icon(Icons.map_outlined, size: 17),
+                label: const Text('Open in Maps'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

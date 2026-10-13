@@ -11,14 +11,14 @@ class ApiClient {
   ApiClient(this._session)
       : _dio = Dio(BaseOptions(
           baseUrl: AppConfig.baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 30),
-          sendTimeout: const Duration(seconds: 30),
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 45),
+          sendTimeout: const Duration(seconds: 45),
         )) {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (o, h) async {
-        final t = await _session.token;
-        if (t != null) o.headers['Authorization'] = 'Bearer $t';
+        final token = await _session.token;
+        if (token != null) o.headers['Authorization'] = 'Bearer $token';
         h.next(o);
       },
       onError: (e, h) {
@@ -46,7 +46,15 @@ class ApiClient {
       var msg = status == null
           ? 'No connection to the server'
           : 'Request failed ($status)';
-      if (data is Map && data['error'] is String) msg = data['error'] as String;
+      if (data is Map) {
+        if (data['error'] is String) {
+          msg = data['error'] as String;
+        } else if (data['message'] is String) {
+          msg = data['message'] as String;
+        }
+      } else if (data is String && data.trim().isNotEmpty) {
+        msg = data.trim();
+      }
       throw ApiException(msg, statusCode: status);
     }
   }
@@ -54,6 +62,34 @@ class ApiClient {
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
       _call(
           () => _dio.post(path, data: body), (d) => d as Map<String, dynamic>);
+
+  Future<Map<String, dynamic>> register(
+    Map<String, dynamic> body, {
+    Uint8List? profilePhoto,
+    String filename = 'profile.jpg',
+  }) {
+    if (profilePhoto == null) {
+      return _call(
+        () => _dio.post(
+          '/api/auth/register',
+          data: body,
+          queryParameters: body,
+        ),
+        (data) => data as Map<String, dynamic>,
+      );
+    }
+    final form = FormData.fromMap({
+      'profilePhoto': MultipartFile.fromBytes(profilePhoto, filename: filename),
+    });
+    return _call(
+      () => _dio.post(
+        '/api/auth/register',
+        data: form,
+        queryParameters: body,
+      ),
+      (data) => data as Map<String, dynamic>,
+    );
+  }
 
   Future<Map<String, dynamic>> get(String path,
           {Map<String, dynamic>? query}) =>
@@ -73,11 +109,32 @@ class ApiClient {
         return _dio.post('/api/notes/$noteId/photo', data: form);
       }, (d) => d as Map<String, dynamic>);
 
+  Future<Map<String, dynamic>> uploadProfilePhoto(Uint8List bytes,
+          {String filename = 'profile.jpg'}) =>
+      _call(() async {
+        final form = FormData.fromMap(
+            {'file': MultipartFile.fromBytes(bytes, filename: filename)});
+        return _dio.post('/api/profile/photo', data: form);
+      }, (data) => data as Map<String, dynamic>);
+
+  Future<Map<String, dynamic>> getProfile() =>
+      _call(() => _dio.get('/api/profile'),
+          (data) => data as Map<String, dynamic>);
+
+  Future<void> deleteProfilePhoto() =>
+      _call(() => _dio.delete('/api/profile/photo'), (_) {});
+
   Future<void> download(String urlPath, String savePath) =>
       _call(() => _dio.download(urlPath, savePath), (_) {});
 
   Future<Uint8List> downloadBytes(String urlPath) => _call(
         () => _dio.get<List<int>>(urlPath,
+            options: Options(responseType: ResponseType.bytes)),
+        (data) => Uint8List.fromList(List<int>.from(data as List)),
+      );
+
+  Future<Uint8List> downloadProfilePhoto() => _call(
+        () => _dio.get<List<int>>('/api/profile/photo',
             options: Options(responseType: ResponseType.bytes)),
         (data) => Uint8List.fromList(List<int>.from(data as List)),
       );

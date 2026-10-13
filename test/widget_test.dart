@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:field_notes/domain/entities.dart';
 import 'package:field_notes/domain/repositories.dart';
@@ -26,7 +27,9 @@ class _AuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> register(String name, String email, String password) async {
+  Future<AppUser> register(String name, String email, String password,
+      {Uint8List? profilePhoto,
+      String profilePhotoName = 'profile.jpg'}) async {
     if (failure != null) throw failure!;
     return user;
   }
@@ -68,7 +71,8 @@ void main() {
 
     final failed = bloc.stream.firstWhere((state) => state.error != null);
     bloc.add(AuthLoginRequested('worker@example.com', 'wrong-password'));
-    expect((await failed).error, 'Invalid email or password');
+    expect((await failed).error,
+        'Invalid email or password. If this account was created before the Render deploy, create it again first.');
 
     await bloc.close();
     await repository.dispose();

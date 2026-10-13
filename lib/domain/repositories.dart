@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'entities.dart';
 
 /// Thrown by data sources; carries a user-friendly message.
@@ -9,7 +11,10 @@ class ApiException implements Exception {
   bool get isNetwork => statusCode == null;
 
   /// Retry later (keep the queued change) vs. permanent rejection (drop it).
-  bool get retryable => statusCode == null || statusCode! >= 500 || const [401, 408, 429].contains(statusCode);
+  bool get retryable =>
+      statusCode == null ||
+      statusCode! >= 500 ||
+      const [401, 408, 429].contains(statusCode);
 
   @override
   String toString() => message;
@@ -18,7 +23,8 @@ class ApiException implements Exception {
 abstract class AuthRepository {
   Future<AppUser?> currentUser();
   Future<AppUser> login(String email, String password);
-  Future<AppUser> register(String name, String email, String password);
+  Future<AppUser> register(String name, String email, String password,
+      {Uint8List? profilePhoto, String profilePhotoName = 'profile.jpg'});
   Future<void> logout();
   Future<void> expireSession();
   Stream<void> get sessionExpired;

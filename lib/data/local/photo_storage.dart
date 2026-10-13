@@ -41,6 +41,28 @@ class PhotoStorage {
     return dest;
   }
 
+  Future<String> persistProfileBytes(Uint8List bytes,
+      {String mimeType = 'image/jpeg'}) async {
+    if (kIsWeb) {
+      return 'data:$mimeType;base64,${base64Encode(bytes)}';
+    }
+    final extension = switch (mimeType) {
+      'image/png' => '.png',
+      'image/webp' => '.webp',
+      _ => '.jpg',
+    };
+    final dir = await _profileDir();
+    final dest = p.join(dir.path, '${const Uuid().v4()}$extension');
+    await File(dest).writeAsBytes(bytes, flush: true);
+    return dest;
+  }
+
+  Future<void> deleteProfile(String? path) async {
+    if (kIsWeb || path == null || path.startsWith('data:')) return;
+    final file = File(path);
+    if (await file.exists()) await file.delete();
+  }
+
   Future<String> persistBytes(Uint8List bytes,
       {String mimeType = 'image/jpeg'}) async {
     if (kIsWeb) {

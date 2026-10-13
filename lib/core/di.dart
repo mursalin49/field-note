@@ -21,12 +21,13 @@ Future<void> setupDi() async {
   final photos = PhotoStorage();
   final api = ApiClient(session);
   final conn = ConnectivityService();
+  final profilePhotos = ProfilePhotoStore(prefs, api, photos);
 
   getIt
     ..registerSingleton<PhotoStorage>(photos)
-    ..registerSingleton<ProfilePhotoStore>(ProfilePhotoStore(prefs))
+    ..registerSingleton<ProfilePhotoStore>(profilePhotos)
     ..registerSingleton<AuthRepository>(
-        AuthRepositoryImpl(api, session, db, photos))
+        AuthRepositoryImpl(api, session, db, photos, profilePhotos))
     ..registerSingleton<CustomerRepository>(CustomerRepositoryImpl(db))
     ..registerSingleton<SiteRepository>(SiteRepositoryImpl(db))
     ..registerSingleton<NoteRepository>(NoteRepositoryImpl(db))

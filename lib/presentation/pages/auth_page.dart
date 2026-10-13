@@ -107,6 +107,9 @@ class _AuthPageState extends State<AuthPage> {
                               TextFormField(
                                 controller: _email,
                                 keyboardType: TextInputType.emailAddress,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                textCapitalization: TextCapitalization.none,
                                 decoration: _fieldDecoration(
                                   hint: 'name@company.com',
                                   icon: Icons.mail_outline,

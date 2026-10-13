@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/di.dart';
 import '../../core/permissions.dart';
-import '../../data/local/photo_storage.dart';
 import '../../data/local/profile_photo_store.dart';
 import '../../domain/entities.dart';
 import '../blocs/auth_bloc.dart';
@@ -274,15 +273,15 @@ class _ProfileCardState extends State<_ProfileCard> {
       );
       if (picked == null) return;
 
-      final storage = getIt<PhotoStorage>();
-      final path = kIsWeb
-          ? await storage.persistBytes(
-              await picked.readAsBytes(),
-              mimeType: picked.mimeType ?? 'image/jpeg',
-            )
-          : await storage.persistProfile(picked.path);
-      await getIt<ProfilePhotoStore>().save(user.id, path);
-      if (mounted) setState(() => _photoPath = path);
+      await getIt<ProfilePhotoStore>().upload(
+        user.id,
+        await picked.readAsBytes(),
+        filename: picked.name.isEmpty ? 'profile.jpg' : picked.name,
+      );
+      if (mounted) {
+        setState(
+            () => _photoPath = getIt<ProfilePhotoStore>().photoPath(user.id));
+      }
     } on DeviceFailure catch (failure) {
       if (mounted) {
         showSnack(context, failure.message,
@@ -383,9 +382,9 @@ class _ProfileCardState extends State<_ProfileCard> {
                       style: const TextStyle(
                           color: Color(0xFF69737C), fontSize: 12)),
                   const SizedBox(height: 4),
-                  const Text('Profile photo is saved on this device',
-                      style: TextStyle(
-                          color: Color(0xFF69737C), fontSize: 11)),
+                  const Text('Profile photo syncs across your devices',
+                      style:
+                          TextStyle(color: Color(0xFF69737C), fontSize: 11)),
                 ],
               ),
             ),

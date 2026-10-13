@@ -14,12 +14,17 @@ enum NoteStatus {
 }
 
 class AppUser extends Equatable {
-  const AppUser({required this.id, required this.name, required this.email});
+  const AppUser(
+      {required this.id,
+      required this.name,
+      required this.email,
+      this.profilePhotoUrl});
   final int id;
   final String name;
   final String email;
+  final String? profilePhotoUrl;
   @override
-  List<Object?> get props => [id, name, email];
+  List<Object?> get props => [id, name, email, profilePhotoUrl];
 }
 
 class Customer extends Equatable {

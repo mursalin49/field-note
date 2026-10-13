@@ -25,7 +25,12 @@ class SessionStore {
     final raw = _prefs.getString('user');
     if (raw == null) return null;
     final m = jsonDecode(raw) as Map<String, dynamic>;
-    return AppUser(id: m['id'] as int, name: m['name'] as String, email: m['email'] as String);
+    return AppUser(
+      id: m['id'] as int,
+      name: m['name'] as String,
+      email: m['email'] as String,
+      profilePhotoUrl: m['profilePhotoUrl'] as String?,
+    );
   }
 
   int? get lastUserId => _prefs.getInt('last_user_id');
@@ -34,7 +39,15 @@ class SessionStore {
     _token = token;
     _tokenLoaded = true;
     await _secure.write(key: 'token', value: token);
-    await _prefs.setString('user', jsonEncode({'id': u.id, 'name': u.name, 'email': u.email}));
+    await _prefs.setString(
+      'user',
+      jsonEncode({
+        'id': u.id,
+        'name': u.name,
+        'email': u.email,
+        'profilePhotoUrl': u.profilePhotoUrl,
+      }),
+    );
     await _prefs.setInt('last_user_id', u.id);
   }
 

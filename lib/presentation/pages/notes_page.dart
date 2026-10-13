@@ -359,7 +359,6 @@ class _NotesHeader extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _NotesSyncSummary extends StatelessWidget {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,8 +41,11 @@ class AuthLoginRequested extends AuthEvent {
 }
 
 class AuthRegisterRequested extends AuthEvent {
-  AuthRegisterRequested(this.name, this.email, this.password);
+  AuthRegisterRequested(this.name, this.email, this.password,
+      {this.profilePhoto, this.profilePhotoName = 'profile.jpg'});
   final String name, email, password;
+  final Uint8List? profilePhoto;
+  final String profilePhotoName;
 }
 
 class AuthLogoutRequested extends AuthEvent {}
@@ -59,9 +63,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           user: user));
     });
     on<AuthLoginRequested>(
-        (e, emit) => _run(emit, () => _repo.login(e.email.trim(), e.password)));
+        (e, emit) => _run(
+              emit,
+              () => _login(e.email, e.password.trim()),
+              login: true,
+            ));
     on<AuthRegisterRequested>((e, emit) => _run(
-        emit, () => _repo.register(e.name.trim(), e.email.trim(), e.password)));
+          emit,
+          () => _repo.register(
+            e.name.trim(),
+            _normalizeEmail(e.email),
+            e.password.trim(),
+            profilePhoto: e.profilePhoto,
+            profilePhotoName: e.profilePhotoName,
+          ),
+        ));
     on<AuthLogoutRequested>((e, emit) async {
       try {
         await _repo.logout();
@@ -87,18 +103,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
   late final StreamSubscription<void> _sub;
 
-  Future<void> _run(
-      Emitter<AuthState> emit, Future<AppUser> Function() action) async {
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  Future<AppUser> _login(String email, String password) async {
+    final typedEmail = email.trim();
+    final normalizedEmail = _normalizeEmail(email);
+    try {
+      return await _repo.login(normalizedEmail, password);
+    } on ApiException catch (ex) {
+      if (ex.statusCode == 401 && typedEmail != normalizedEmail) {
+        return _repo.login(typedEmail, password);
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _run(Emitter<AuthState> emit, Future<AppUser> Function() action,
+      {bool login = false}) async {
     emit(state.copyWith(busy: true, clearError: true));
     try {
       final user = await action();
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } on ApiException catch (ex) {
+      final message = login && ex.statusCode == 401
+          ? 'Invalid email or password. If this account was created before the Render deploy, create it again first.'
+          : ex.message;
       emit(state.copyWith(
           busy: false,
           error: ex.isNetwork
               ? 'You need an internet connection to sign in or register.'
-              : ex.message));
+              : message));
+    } catch (_) {
+      emit(state.copyWith(
+          busy: false,
+          error:
+              'Sign-in failed because the server response was not expected. Please try again.'));
     }
   }
 
